@@ -1,6 +1,6 @@
 import type { Db } from './db'
 import type {
-  Task, Operation, Resource, Setting,
+  Task, Operation, Resource, Setting, Workflow, Checkpoint,
   ProjectInfo, EpicWithTasks, TaskWithChildren
 } from './models'
 import fs from 'fs'
@@ -74,6 +74,24 @@ export function getResources(db: Db, taskId?: string): Resource[] {
 
 export function getSettings(db: Db): Setting[] {
   return db.prepare("SELECT * FROM settings ORDER BY key ASC").all() as Setting[]
+}
+
+export function getWorkflows(db: Db): Workflow[] {
+  try {
+    return db.prepare("SELECT * FROM workflows ORDER BY created_at ASC").all() as Workflow[]
+  } catch {
+    // workflows 테이블이 없는 구버전 DB (v1/v2) 호환
+    return []
+  }
+}
+
+export function getCheckpoints(db: Db): Checkpoint[] {
+  try {
+    return db.prepare("SELECT * FROM checkpoints ORDER BY created_at ASC").all() as Checkpoint[]
+  } catch {
+    // checkpoints 테이블이 없는 구버전 DB (v1/v2) 호환
+    return []
+  }
 }
 
 /**

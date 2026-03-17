@@ -12,20 +12,27 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY, project_id TEXT NOT NULL, type TEXT NOT NULL,
     title TEXT NOT NULL, description TEXT, status TEXT NOT NULL DEFAULT 'todo',
-    parent_id TEXT, todo TEXT, interrupt TEXT, milestone_target TEXT, due_date TEXT,
+    parent_id TEXT, workflow_id TEXT, todo TEXT, interrupt TEXT,
+    milestone_target TEXT, due_date TEXT,
     seq_order INTEGER, parallel_group TEXT, depends_on TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS workflows (
+    id TEXT PRIMARY KEY, project_id TEXT NOT NULL,
+    title TEXT NOT NULL, source_file TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   CREATE TABLE IF NOT EXISTS operations (
     id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL,
     operation_type TEXT NOT NULL, agent_platform TEXT, summary TEXT,
     details TEXT, subagent_used INTEGER DEFAULT 0, subagent_result TEXT,
-    started_at TEXT, completed_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
     tool_name TEXT, skill_name TEXT, mcp_name TEXT,
     retry_count INTEGER DEFAULT 0,
-    input_tokens INTEGER, output_tokens INTEGER, duration_seconds INTEGER
+    input_tokens INTEGER, output_tokens INTEGER, duration_seconds INTEGER,
+    started_at TEXT, completed_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   CREATE TABLE IF NOT EXISTS resources (
     id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL,
@@ -37,31 +44,54 @@ db.exec(`
     key TEXT PRIMARY KEY, value TEXT NOT NULL, description TEXT,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+  CREATE TABLE IF NOT EXISTS checkpoints (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    note TEXT, snapshot TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_tasks_project    ON tasks(project_id);
+  CREATE INDEX IF NOT EXISTS idx_tasks_parent     ON tasks(parent_id);
+  CREATE INDEX IF NOT EXISTS idx_tasks_type       ON tasks(type);
+  CREATE INDEX IF NOT EXISTS idx_tasks_status     ON tasks(status);
+  CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows(project_id);
+  CREATE INDEX IF NOT EXISTS idx_operations_task  ON operations(task_id);
+  CREATE INDEX IF NOT EXISTS idx_resources_task   ON resources(task_id);
+`)
+
+const insertTask = db.prepare(`
+  INSERT INTO tasks (id,project_id,type,title,description,status,parent_id,workflow_id,
+    todo,interrupt,milestone_target,due_date,seq_order,parallel_group,depends_on,
+    created_at,updated_at)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))
 `)
 
 // Project
-db.prepare("INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))")
-  .run('FIX','FIX','project','Fixture Project',null,'in_progress',null,null,null,null,null,null,null,null)
+insertTask.run('FIX','FIX','project','Fixture Project',null,'in_progress',null,null,null,null,null,null,null,null,null)
+
+// Workflows
+db.prepare("INSERT INTO workflows (id,project_id,title,status) VALUES (?,?,?,?)")
+  .run('FIX-W001','FIX','인증 시스템 구현 계획','active')
 
 // Epics
-db.prepare("INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))")
-  .run('FIX-E001','FIX','epic','인증 시스템 구현','로그인/회원가입 API','in_progress','FIX',null,null,null,null,1,null,null)
-db.prepare("INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))")
-  .run('FIX-E002','FIX','epic','대시보드 구현','통계 화면','todo','FIX',null,null,null,null,2,null,null)
+insertTask.run('FIX-E001','FIX','epic','인증 시스템 구현','로그인/회원가입 API','in_progress','FIX','FIX-W001',null,null,null,null,1,null,null)
+insertTask.run('FIX-E002','FIX','epic','대시보드 구현','통계 화면','todo','FIX',null,null,null,null,2,null,null,null)
 
 // Tasks under E001
-db.prepare("INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))")
-  .run('FIX-T001','FIX','task','로그인 API 구현',null,'done','FIX-E001',null,null,null,null,1,null,null)
-db.prepare("INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))")
-  .run('FIX-T002','FIX','task','회원가입 API 구현',null,'in_progress','FIX-E001',null,null,null,null,2,null,null)
-db.prepare("INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))")
-  .run('FIX-T003','FIX','task','JWT 검증 구현',null,'todo','FIX-E001',null,null,null,null,3,null,'["FIX-T001"]')
+insertTask.run('FIX-T001','FIX','task','로그인 API 구현',null,'done','FIX-E001','FIX-W001',null,null,null,null,1,null,null)
+insertTask.run('FIX-T002','FIX','task','회원가입 API 구현',null,'in_progress','FIX-E001','FIX-W001',null,null,null,null,2,null,null)
+insertTask.run('FIX-T003','FIX','task','JWT 검증 구현',null,'todo','FIX-E001','FIX-W001',null,null,null,null,3,null,'["FIX-T001"]')
 
 // SubTasks under T002
-db.prepare("INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))")
-  .run('FIX-T004','FIX','task','입력값 검증',null,'in_progress','FIX-T002',null,null,null,null,1,null,null)
-db.prepare("INSERT INTO tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))")
-  .run('FIX-T005','FIX','task','DB 저장',null,'todo','FIX-T002',null,null,null,null,2,null,null)
+insertTask.run('FIX-T004','FIX','task','입력값 검증',null,'in_progress','FIX-T002','FIX-W001',null,null,null,null,1,null,null)
+insertTask.run('FIX-T005','FIX','task','DB 저장',null,'todo','FIX-T002','FIX-W001',null,null,null,null,2,null,null)
+
+// Checkpoint
+db.prepare("INSERT INTO checkpoints (note,snapshot) VALUES (?,?)")
+  .run('작업 시작 전 스냅샷', JSON.stringify({
+    'FIX-T001': { status: 'todo', interrupt: null },
+    'FIX-T002': { status: 'todo', interrupt: null },
+    'FIX-T003': { status: 'todo', interrupt: null },
+  }))
 
 // Operations for T001
 db.prepare(`INSERT INTO operations (task_id,operation_type,agent_platform,summary,
@@ -104,12 +134,13 @@ db.prepare("INSERT INTO resources (task_id,file_path,description,res_type) VALUE
   .run('FIX-T002','./resources/FIX-T002_draft.md','중간 결과물','intermediate')
 
 // Settings
-db.prepare("INSERT INTO settings (key,value,description) VALUES (?,?,?)")
-  .run('autonomy_level','moderate','Agent 자율성 수준')
-db.prepare("INSERT INTO settings (key,value,description) VALUES (?,?,?)")
-  .run('commit_style','conventional','커밋 메시지 스타일')
-db.prepare("INSERT INTO settings (key,value,description) VALUES (?,?,?)")
-  .run('use_subagent','true','Sub Agent 사용 허용')
+const insertSetting = db.prepare("INSERT INTO settings (key,value,description) VALUES (?,?,?)")
+insertSetting.run('__schema_version','3','DB 스키마 버전 (내부 사용)')
+insertSetting.run('autonomy_level','moderate','Agent 자율성 수준')
+insertSetting.run('commit_style','conventional','커밋 메시지 스타일')
+insertSetting.run('use_subagent','true','Sub Agent 사용 허용')
+insertSetting.run('parallel_execution','true','병렬 Task 동시 실행 허용 여부')
+insertSetting.run('progress_interval','major_steps','진행 기록 간격')
 
 db.close()
 console.log('sample.db created successfully')

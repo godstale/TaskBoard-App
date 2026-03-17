@@ -71,8 +71,8 @@ node example/create-sample-db.js
 → [`docs/architecture.md`](docs/architecture.md)
 
 Key sections:
-- **Data models** — `Task`, `Operation`, `Resource`, `Setting`, composite types
-- **Query functions** — `getProject`, `getEpicsWithTasks`, `getOperations`, `getResources`, etc.
+- **Data models** — `Task`, `Workflow`, `Checkpoint`, `Operation`, `Resource`, `Setting`, composite types
+- **Query functions** — `getProject`, `getEpicsWithTasks`, `getWorkflows`, `getCheckpoints`, `getOperations`, `getResources`, etc.
 - **DB watcher** — chokidar + 3 s polling fallback
 - **Electron IPC** — channels, preload context-bridge, renderer state hook
 - **Screen flow** — ProjectSelect → Dashboard / TaskOperations / Resources / Settings
@@ -92,14 +92,16 @@ taskops.db (SQLite)
                     └── window.taskboard (context-bridge)
 ```
 
-### DB Schema (read-only)
+### DB Schema v3 (read-only)
 
 | Table | Key columns |
 |-------|-------------|
-| `tasks` | `id`, `project_id`, `type` (project/epic/task/objective), `status`, `parent_id`, `seq_order` |
-| `operations` | `id`, `task_id`, `operation_type` (start/progress/complete/error/interrupt), `summary` |
+| `tasks` | `id`, `project_id`, `type` (project/epic/task/objective), `status`, `parent_id`, `workflow_id`, `seq_order`, `parallel_group`, `depends_on` |
+| `workflows` | `id`, `project_id`, `title`, `status` (active/completed/archived) |
+| `operations` | `id`, `task_id`, `operation_type` (start/progress/complete/error/interrupt), `summary`, `tool_name`, `skill_name`, `mcp_name`, `input_tokens`, `output_tokens` |
 | `resources` | `id`, `task_id`, `file_path`, `res_type` (input/output/reference/intermediate) |
 | `settings` | `key`, `value`, `description` |
+| `checkpoints` | `id`, `note`, `snapshot` (JSON task-status map) |
 
 ### TypeScript Types (`src/core/models.ts`)
 ```typescript
@@ -107,6 +109,7 @@ type TaskStatus    = 'todo' | 'in_progress' | 'interrupted' | 'done' | 'cancelle
 type TaskType      = 'project' | 'epic' | 'task' | 'objective'
 type OperationType = 'start' | 'progress' | 'complete' | 'error' | 'interrupt'
 type ResourceType  = 'input' | 'output' | 'reference' | 'intermediate'
+type WorkflowStatus = 'active' | 'completed' | 'archived'
 ```
 
 ---
@@ -127,7 +130,7 @@ type ResourceType  = 'input' | 'output' | 'reference' | 'intermediate'
 
 ## Testing
 
-- **Sample DB**: `example/sample.db` — 1 project (`FIX`), 2 epics, 5 tasks, 6 operations, 3 resources, 3 settings (for manual app testing)
+- **Sample DB**: `example/sample.db` — 1 project (`FIX`), 1 workflow, 2 epics, 5 tasks, 6 operations, 3 resources, 6 settings, 1 checkpoint (for manual app testing)
 - **Unit tests**: `tests/electron.test.ts` — Vitest
 - **E2E tests**: `tests/e2e/` — Playwright
 

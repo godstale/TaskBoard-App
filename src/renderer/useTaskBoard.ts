@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { EpicWithTasks, Operation, Resource, Setting, ProjectInfo, Task } from '@taskboard/core'
+import type { EpicWithTasks, Operation, Resource, Setting, ProjectInfo, Task, Workflow, Checkpoint } from '@taskboard/core'
 
 declare global {
   interface Window {
@@ -17,9 +17,11 @@ interface AllData {
   project: ProjectInfo | undefined
   epics: EpicWithTasks[]
   workflowOrder: Task[]
+  workflows: Workflow[]
   operations: Operation[]
   resources: Resource[]
   settings: Setting[]
+  checkpoints: Checkpoint[]
 }
 
 export type Screen = 'dashboard' | 'taskops' | 'resources' | 'settings'

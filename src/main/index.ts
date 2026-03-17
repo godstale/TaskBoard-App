@@ -2,7 +2,8 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import path from 'path'
 import {
   openDb, closeDb, getProject, getEpicsWithTasks, getWorkflowOrder,
-  getOperations, getResources, getSettings, getProjectList, watch
+  getOperations, getResources, getSettings, getWorkflows, getCheckpoints,
+  getProjectList, watch
 } from '../core/index.js'
 import { IPC } from './ipc'
 
@@ -56,9 +57,11 @@ app.whenReady().then(() => {
       project: getProject(db),
       epics: getEpicsWithTasks(db),
       workflowOrder: getWorkflowOrder(db),
+      workflows: getWorkflows(db),
       operations: getOperations(db),
       resources: getResources(db),
       settings: getSettings(db),
+      checkpoints: getCheckpoints(db),
     }
     closeDb(db)
 
