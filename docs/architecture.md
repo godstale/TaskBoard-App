@@ -1,114 +1,85 @@
-# TaskBoard — Architecture & Implementation Reference
+# TaskBoard App — Architecture & Implementation Reference
 
-> Version 0.1.0 | 2026-03-15
+> Version 0.2.x | 2026-03-17
 
 ---
 
 ## Overview
 
-TaskBoard is a read-only visualization tool for [TaskOps](https://github.com/godstale/TaskOps) projects. It reads the `taskops.db` SQLite database produced by TaskOps and renders the project's Epic/Task hierarchy, operation history, and resources in two separate apps:
-
-- **TUI** (`@taskboard/tui`) — Ink 5 terminal app
-- **Electron** (`@taskboard/electron`) — Electron 33 + React 18 desktop app
-
-Both apps share business logic through `@taskboard/core`.
+TaskBoard App is a read-only Electron desktop app for visualizing [TaskOps](https://github.com/godstale/TaskOps) projects.
+It reads the `taskops.db` SQLite database produced by TaskOps and renders the project's Epic/Task hierarchy, operation history, and resources.
 
 ---
 
-## Monorepo Structure
+## Project Structure
 
 ```
-TaskBoard/
-├── package.json                  # pnpm workspaces root
-├── pnpm-workspace.yaml
-├── CHANGELOG.md
-├── fixtures/
-│   ├── fixture.db                # Sample SQLite DB for testing
-│   └── create-fixture.js         # Script to regenerate fixture.db
-├── docs/
-│   └── architecture.md           # This file
-└── packages/
-    ├── core/                     # @taskboard/core
-    │   ├── src/
-    │   │   ├── index.ts          # Re-exports everything
-    │   │   ├── models.ts         # TypeScript interfaces
-    │   │   ├── db.ts             # SQLite connection
-    │   │   ├── queries.ts        # Read-only query functions
-    │   │   └── watcher.ts        # DB file watcher
-    │   ├── tests/
-    │   │   ├── db.test.ts
-    │   │   ├── queries.test.ts
-    │   │   ├── watcher.test.ts
-    │   │   └── helpers.ts        # In-memory test DB factory
-    │   └── package.json
-    ├── tui/                      # @taskboard/tui
-    │   ├── src/
-    │   │   ├── index.tsx         # Entry point + CLI arg parsing
-    │   │   ├── App.tsx           # Root component + screen routing
-    │   │   ├── useTaskBoard.ts   # State hook (DB load + watcher)
-    │   │   ├── useSafeInput.ts   # Safe keyboard input hook
-    │   │   └── screens/
-    │   │       ├── ProjectSelect.tsx
-    │   │       ├── Dashboard.tsx
-    │   │       ├── TaskOperations.tsx
-    │   │       ├── Resources.tsx
-    │   │       └── Settings.tsx
-    │   └── tests/
-    │       ├── ProjectSelect.test.tsx
-    │       └── Dashboard.test.tsx
-    └── electron/                 # @taskboard/electron
-        ├── src/
-        │   ├── main/
-        │   │   ├── index.ts      # Electron main process
-        │   │   ├── ipc.ts        # IPC channel name constants
-        │   │   └── preload.ts    # Context bridge
-        │   └── renderer/
-        │       ├── index.html
-        │       ├── main.tsx      # React entry point
-        │       ├── App.tsx       # Root component
-        │       ├── useTaskBoard.ts  # Renderer state hook (via IPC)
-        │       ├── global.css    # Tailwind base styles
-        │       ├── components/
-        │       │   └── Sidebar.tsx
-        │       └── screens/
-        │           ├── ProjectSelect.tsx
-        │           ├── Dashboard.tsx
-        │           ├── TaskOperations.tsx
-        │           ├── Resources.tsx
-        │           └── Settings.tsx
-        ├── tests/
-        │   └── electron.test.ts  # Playwright E2E
-        ├── vite.config.ts
-        ├── tailwind.config.js
-        ├── tsconfig.json         # Renderer (ESNext + DOM)
-        ├── tsconfig.main.json    # Main process (CommonJS)
-        └── electron-builder.json5
+TaskBoard-App/
+├── src/
+│   ├── core/                     # Shared business logic (DB + watcher)
+│   │   ├── index.ts              # Re-exports everything
+│   │   ├── models.ts             # TypeScript interfaces
+│   │   ├── db.ts                 # SQLite connection (better-sqlite3)
+│   │   ├── queries.ts            # Read-only query functions
+│   │   └── watcher.ts            # DB file watcher (chokidar)
+│   ├── main/                     # Electron main process
+│   │   ├── index.ts              # Main process entry point
+│   │   ├── ipc.ts                # IPC channel name constants
+│   │   └── preload.ts            # Context-bridge (window.taskboard)
+│   └── renderer/                 # React 18 renderer
+│       ├── index.html
+│       ├── main.tsx              # React entry point
+│       ├── App.tsx               # Root component + screen routing
+│       ├── useTaskBoard.ts       # Renderer state hook (via IPC)
+│       ├── global.css            # Tailwind base styles
+│       ├── components/
+│       │   └── Sidebar.tsx
+│       └── screens/
+│           ├── ProjectSelect.tsx
+│           ├── Dashboard.tsx
+│           ├── TaskOperations.tsx
+│           ├── Resources.tsx
+│           └── Settings.tsx
+├── tests/
+│   ├── electron.test.ts          # Vitest unit tests
+│   └── e2e/                      # Playwright E2E tests
+├── example/
+│   ├── sample.db                 # Sample SQLite DB (manual testing)
+│   ├── create-sample-db.js       # Script to regenerate sample.db
+│   ├── sample/                   # Sample TaskOps project folder
+│   └── TaskOps_Test/             # Another sample TaskOps project folder
+├── vite.config.ts
+├── tsconfig.json                 # Renderer (ESNext + DOM)
+├── tsconfig.main.json            # Main process (CommonJS)
+└── electron-builder.json5
 ```
 
 ---
 
-## Core Package (`@taskboard/core`)
-
-### Data Models (`models.ts`)
+## Data Models (`src/core/models.ts`)
 
 ```typescript
-type TaskStatus   = 'todo' | 'in_progress' | 'interrupted' | 'done' | 'cancelled'
-type TaskType     = 'project' | 'epic' | 'task' | 'objective'
+type TaskStatus    = 'todo' | 'in_progress' | 'interrupted' | 'done' | 'cancelled'
+type TaskType      = 'project' | 'epic' | 'task' | 'objective'
 type OperationType = 'start' | 'progress' | 'complete' | 'error' | 'interrupt'
-type ResourceType = 'input' | 'output' | 'reference' | 'intermediate'
+type ResourceType  = 'input' | 'output' | 'reference' | 'intermediate'
 
 interface Task       { id, project_id, type, title, status, parent_id, seq_order, ... }
-interface Operation  { id, task_id, operation_type, agent_platform, summary, ... }
+interface Operation  { id, task_id, operation_type, agent_platform, summary,
+                       tool_name?, skill_name?, mcp_name?, retry_count?,
+                       input_tokens?, output_tokens?, duration_seconds?, ... }
 interface Resource   { id, task_id, file_path, res_type, ... }
 interface Setting    { key, value, description, updated_at }
 
-// Composite types used by UI layers
-interface EpicWithTasks  { epic: Task; tasks: TaskWithChildren[] }
+// Composite types used by the renderer
+interface EpicWithTasks    { epic: Task; tasks: TaskWithChildren[] }
 interface TaskWithChildren { task: Task; children: Task[] }
-interface ProjectSummary { project, totalEpics, totalTasks, tasksByStatus }
+interface ProjectSummary   { project, totalEpics, totalTasks, tasksByStatus }
 ```
 
-### Query Functions (`queries.ts`)
+---
+
+## Query Functions (`src/core/queries.ts`)
 
 | Function | Returns |
 |----------|---------|
@@ -121,7 +92,9 @@ interface ProjectSummary { project, totalEpics, totalTasks, tasksByStatus }
 | `getProjectList(root)` | Subdirectories of `root` that contain `taskops.db` |
 | `getProjectSummary(db)` | Aggregated task counts by status |
 
-### DB Watcher (`watcher.ts`)
+---
+
+## DB Watcher (`src/core/watcher.ts`)
 
 ```
 watch(dbPath, onChange) => unwatch
@@ -134,42 +107,7 @@ watch(dbPath, onChange) => unwatch
 
 ---
 
-## TUI App (`@taskboard/tui`)
-
-### Screen Flow
-
-```
-npx taskboard-tui [--path <taskops-root>]
-        │
-        ├── --path given  ─────────────────┐
-        └── no --path → prompt for path ──▶ ProjectSelect
-                                                │  select project
-                                            App (Tab navigation)
-                                    ┌───────────┼───────────┐───────────┐
-                                Dashboard  TaskOps  Resources  Settings
-```
-
-### State Management
-
-`useTaskBoard(dbPath)` — single hook in `src/useTaskBoard.ts`:
-- Opens DB, loads all data on mount
-- Registers watcher; calls `reload()` on DB change
-- Exposes `{ project, epics, operations, resources, settings, screen, selectedTaskId, reload, setScreen, setSelectedTask }`
-
-### Key Bindings
-
-| Key | Action |
-|-----|--------|
-| `Tab` | Cycle through screens |
-| `R` | Reload data from DB |
-| `Q` | Quit |
-| `←` / `→` | Navigate tasks (TaskOperations screen) |
-
----
-
-## Electron App (`@taskboard/electron`)
-
-### IPC Architecture
+## Electron IPC Architecture
 
 ```
 Main Process                           Renderer Process
@@ -180,9 +118,9 @@ dialog.showOpenDialog    ◀──IPC──     window.taskboard.selectFolder()
 getProjectList()         ──IPC──▶     window.taskboard.getProjectList()
 ```
 
-Renderer **never** accesses the filesystem directly. All data flows through the preload context-bridge (`src/main/preload.ts`) which exposes `window.taskboard`.
+The renderer **never** accesses the filesystem directly. All data flows through the preload context-bridge (`src/main/preload.ts`) which exposes `window.taskboard`.
 
-### IPC Channels (`ipc.ts`)
+### IPC Channels (`src/main/ipc.ts`)
 
 | Channel | Direction | Purpose |
 |---------|-----------|---------|
@@ -191,7 +129,9 @@ Renderer **never** accesses the filesystem directly. All data flows through the 
 | `select-folder` | renderer → main (invoke) | Open OS folder dialog |
 | `db-changed` | main → renderer (send) | Notify renderer to reload |
 
-### Renderer State Hook (`useTaskBoard.ts`)
+---
+
+## Renderer State Hook (`src/renderer/useTaskBoard.ts`)
 
 ```typescript
 useTaskBoard(dbPath: string | null)
@@ -203,32 +143,63 @@ useTaskBoard(dbPath: string | null)
 //   3. cleanup: offDbChanged() on unmount / path change
 ```
 
-### Build
+---
 
-- Renderer: Vite (`src/renderer/` → `dist/renderer/`)
-- Main process: `tsc -p tsconfig.main.json` (`src/main/` → `dist/main/`)
-- Packaging: electron-builder (`electron-builder.json5`)
+## Screen Flow
+
+```
+App launch
+    │
+    └──▶ ProjectSelect (folder picker → scan for taskops.db)
+              │  select project
+          App (tab navigation)
+    ┌─────────┼─────────┬─────────┐
+Dashboard  TaskOps  Resources  Settings
+```
+
+### Screens
+
+| Screen | Description |
+|--------|-------------|
+| **ProjectSelect** | OS folder picker + project list |
+| **Dashboard** | Summary cards + Epic/Task hierarchy |
+| **TaskOperations** | ReactFlow node-edge diagram of operation history |
+| **Resources** | Resource list with type badges |
+| **Settings** | Key/value settings table |
+
+---
+
+## Build
+
+- **Renderer**: Vite (`src/renderer/` → `dist/renderer/`)
+- **Main process**: `tsc -p tsconfig.main.json` (`src/main/` → `dist/main/`)
+- **Packaging**: electron-builder (`electron-builder.json5`)
+
+```bash
+pnpm build    # renderer + main
+pnpm package  # → release/ (NSIS / dmg / AppImage)
+```
 
 ---
 
 ## Testing Strategy
 
-| Package | Tool | Coverage |
-|---------|------|----------|
-| `@taskboard/core` | Vitest | DB open/close, all query functions, watcher callback |
-| `@taskboard/tui` | Vitest + ink-testing-library | ProjectSelect, Dashboard rendering |
-| `@taskboard/electron` | Playwright | E2E app launch, screen navigation, data display |
+| Layer | Tool | Coverage |
+|-------|------|----------|
+| Core (db, queries, watcher) | Vitest | DB open/close, all query functions, watcher callback |
+| Renderer components | Vitest + React Testing Library | Screen rendering |
+| App end-to-end | Playwright | App launch, screen navigation, data display |
 
-### Test Fixture (`fixtures/fixture.db`)
+### Sample DB (`example/sample.db`)
 
-Pre-built SQLite DB with:
+Pre-built SQLite DB for manual app testing:
 - 1 project (`FIX`)
 - 2 epics, 5 tasks (including 2 sub-tasks)
 - 6 operations across 2 tasks
 - 3 resources (input / output / intermediate)
 - 3 settings entries
 
-Regenerate: `node fixtures/create-fixture.js`
+Regenerate: `node example/create-sample-db.js`
 
 ---
 
@@ -237,10 +208,9 @@ Regenerate: `node fixtures/create-fixture.js`
 | Layer | Technology |
 |-------|------------|
 | Language | TypeScript 5.4 |
-| Package manager | pnpm 8 + workspaces |
+| Package manager | pnpm 8 |
 | Core | better-sqlite3, chokidar |
-| TUI | Ink 5, ink-select-input, ink-text-input |
 | Desktop | Electron 33, React 18, Vite 5, Tailwind CSS 3 |
 | Flow diagram | ReactFlow 11 |
-| Testing | Vitest, ink-testing-library, React Testing Library, Playwright |
+| Testing | Vitest, React Testing Library, Playwright |
 | Packaging | electron-builder 24 |
