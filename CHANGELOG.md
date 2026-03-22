@@ -11,6 +11,22 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.6] — 2026-03-22
+
+### Changed
+
+- App version updated to 0.2.6
+
+---
+
+## [0.2.5] — 2026-03-21
+
+### Changed
+
+- Internal version bump
+
+---
+
 ## [0.2.4] — 2026-03-20
 
 ### Added

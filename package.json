@@ -1,6 +1,6 @@
 {
   "name": "taskboard-app",
-  "version": "0.2.2",
+  "version": "0.2.6",
   "description": "Electron desktop app for visualizing TaskOps projects",
   "main": "dist/main/index.js",
   "scripts": {
