@@ -9,6 +9,21 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+---
+
+## [0.2.4] — 2026-03-20
+
+### Added
+
+- **TaskOps Schema v4 Support**: Added `workflow_id` to `Operation` and `Resource` models and queries, enabling workflow-level data association and filtering.
+- **Objectives Support**: Full integration of the 'objective' ETS component type.
+  - **Dashboard**: New "Objectives" section for visualizing milestones and deadlines (`milestone_target`, `due_date`).
+  - **Task Operations**: Objectives now appear in the sidebar for operation history viewing.
+  - **Queries**: Added `getObjectives` and updated `getProjectSummary` to include objective counts.
+- **Enhanced Task Details**: The Dashboard now displays `todo` implementation notes and `interrupt` reasons for tasks and subtasks.
+- **Workflow Filtering (Electron)**: Added a workflow selector to the Task Operations screen to filter the task list.
+- **Resource Grouping (Electron)**: Resources are now visually grouped by their associated workflow.
+
 ### Fixed
 
 - **Electron — `better-sqlite3` ABI mismatch**: Added `postinstall` hook to `packages/electron` that automatically downloads the Electron-specific prebuilt binary after `pnpm install`. Users no longer need to run `pnpm rebuild:electron` manually after cloning.

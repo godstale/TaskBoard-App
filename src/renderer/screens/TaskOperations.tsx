@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import ReactFlow, {
   Node,
   Edge,
@@ -8,19 +8,14 @@ import ReactFlow, {
   NodeTypes,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import type { EpicWithTasks, Task, Operation } from '@taskboard/core'
-
-interface AllData {
-  epics: EpicWithTasks[]
-  operations: Operation[]
-  workflowOrder: Task[]
-  [key: string]: any
-}
+import type { Task, Operation, Workflow } from '@taskboard/core'
+import { AllData } from '../useTaskBoard'
 
 interface Props {
   data: AllData
   selectedTaskId: string | null
   onSelectTask: (id: string | null) => void
+  workflowFilter: string
 }
 
 const OP_COLOR: Record<string, string> = {
@@ -79,7 +74,7 @@ function OperationNode({ data }: { data: OpNodeData }) {
         <div className="text-xs text-blue-400">{data.agent}</div>
       )}
       {data.summary && (
-        <div className="text-xs text-gray-300 mt-1">{data.summary}</div>
+        <div className="text-xs text-gray-300 mt-1 line-clamp-3">{data.summary}</div>
       )}
       {hasV2 && (
         <div className="border-t border-gray-600 mt-2 pt-2">
@@ -125,37 +120,42 @@ function OperationNode({ data }: { data: OpNodeData }) {
 
 const nodeTypes: NodeTypes = { operation: OperationNode }
 
-export function TaskOperations({ data, selectedTaskId, onSelectTask }: Props) {
-  const allTasks = data.epics.flatMap(e => e.tasks.map(t => t.task))
+export function TaskOperations({ data, selectedTaskId, onSelectTask, workflowFilter }: Props) {
+  const allTasks = useMemo(() => {
+    const tasks = data.epics.flatMap(e => [
+      ...e.tasks.map(t => t.task),
+      ...e.tasks.flatMap(t => t.children)
+    ])
+    return [...tasks, ...data.objectives]
+  }, [data.epics, data.objectives])
 
-  const selectedTask = selectedTaskId
-    ? allTasks.find(t => t.id === selectedTaskId)
-    : allTasks[0] ?? null
+  const filteredTasks = useMemo(() => {
+    if (workflowFilter === 'all') return allTasks
+    return allTasks.filter(t => t.workflow_id === workflowFilter)
+  }, [allTasks, workflowFilter])
 
-  const taskOps = selectedTask
-    ? data.operations.filter(o => o.task_id === selectedTask.id)
-    : []
+  const selectedTask = useMemo(() => {
+    return selectedTaskId
+      ? allTasks.find(t => t.id === selectedTaskId)
+      : filteredTasks[0] ?? null
+  }, [selectedTaskId, allTasks, filteredTasks])
 
-  const parentEpic = selectedTask
-    ? data.epics.find(e => e.tasks.some(t => t.task.id === selectedTask?.id))
-    : null
+  const taskOps = useMemo(() => {
+    if (!selectedTask) return []
+    return data.operations.filter(o => o.task_id === selectedTask.id)
+  }, [data.operations, selectedTask?.id])
 
-  // Per-task token/duration totals for header summary
+  // Summary stats
   const totalInputTokens = taskOps.reduce((sum, op) => sum + (op.input_tokens ?? 0), 0)
   const totalOutputTokens = taskOps.reduce((sum, op) => sum + (op.output_tokens ?? 0), 0)
   const totalDuration = taskOps.reduce((sum, op) => sum + (op.duration_seconds ?? 0), 0)
   const hasTokenData = taskOps.some(op => op.input_tokens != null || op.output_tokens != null)
 
-  // Build ReactFlow nodes and edges
   const { nodes, edges } = useMemo(() => {
-    const ops = selectedTask
-      ? data.operations.filter(o => o.task_id === selectedTask.id)
-      : []
-
-    const nodes: Node[] = ops.map((op, i) => ({
+    const nodes: Node[] = taskOps.map((op, i) => ({
       id: String(op.id),
       type: 'operation',
-      position: { x: 100, y: i * 130 },
+      position: { x: 100, y: i * 140 },
       data: {
         operationType: op.operation_type,
         color: OP_COLOR[op.operation_type] ?? '#6b7280',
@@ -172,80 +172,108 @@ export function TaskOperations({ data, selectedTaskId, onSelectTask }: Props) {
       } satisfies OpNodeData,
     }))
 
-    const edges: Edge[] = ops.slice(0, -1).map((op, i) => ({
-      id: `e${op.id}-${ops[i + 1].id}`,
+    const edges: Edge[] = taskOps.slice(0, -1).map((op, i) => ({
+      id: `e${op.id}-${taskOps[i + 1].id}`,
       source: String(op.id),
-      target: String(ops[i + 1].id),
+      target: String(taskOps[i + 1].id),
       markerEnd: { type: MarkerType.ArrowClosed },
       style: { stroke: '#374151' },
     }))
 
     return { nodes, edges }
-  }, [data.operations, selectedTask?.id])
+  }, [taskOps])
 
   return (
     <div className="h-full flex flex-col">
-      {/* Breadcrumb header with token summary */}
-      {selectedTask && (
-        <div className="px-4 py-2 border-b border-gray-800 bg-gray-900 flex items-center gap-2 text-sm">
-          {parentEpic && (
-            <>
-              <span className="text-gray-500">{parentEpic.epic.id}</span>
-              <span className="text-gray-600">›</span>
-            </>
-          )}
-          <span className="text-white font-medium">
-            [{selectedTask.id}] {selectedTask.title}
-          </span>
-          <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
-            selectedTask.status === 'done' ? 'bg-green-900 text-green-300' :
-            selectedTask.status === 'in_progress' ? 'bg-yellow-900 text-yellow-300' :
-            'bg-gray-800 text-gray-400'
-          }`}>
-            {selectedTask.status}
-          </span>
-          {hasTokenData && (
-            <span className="ml-auto text-xs text-gray-500 flex items-center gap-2">
-              <span>
-                <span className="text-green-400">in:{formatTokens(totalInputTokens)}</span>
-                {' / '}
-                <span className="text-yellow-400">out:{formatTokens(totalOutputTokens)}</span>
-              </span>
-              {totalDuration > 0 && (
-                <span>{formatDuration(totalDuration)}</span>
-              )}
+      {/* Task Header info */}
+      <div className="px-4 py-2 border-b border-gray-800 bg-gray-900 flex items-center min-h-[40px]">
+        {selectedTask && (
+          <div className="flex items-center gap-2 text-sm flex-1">
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
+              selectedTask.type === 'objective' ? 'bg-purple-900 text-purple-300' :
+              selectedTask.type === 'epic' ? 'bg-blue-900 text-blue-300' :
+              'bg-gray-800 text-gray-400'
+            }`}>
+              {selectedTask.type}
             </span>
-          )}
-        </div>
-      )}
+            <span className="text-white font-medium truncate">
+              [{selectedTask.id}] {selectedTask.title}
+            </span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full uppercase ${
+              selectedTask.status === 'done' ? 'bg-green-900 text-green-300' :
+              selectedTask.status === 'in_progress' ? 'bg-yellow-900 text-yellow-300' :
+              'bg-gray-800 text-gray-400'
+            }`}>
+              {selectedTask.status}
+            </span>
+            {hasTokenData && (
+              <span className="ml-auto text-xs text-gray-500 flex items-center gap-3">
+                <span className="flex items-center gap-2">
+                  <span className="text-green-400">IN:{formatTokens(totalInputTokens)}</span>
+                  <span className="text-yellow-400">OUT:{formatTokens(totalOutputTokens)}</span>
+                </span>
+                {totalDuration > 0 && (
+                  <span className="border-l border-gray-700 pl-3">{formatDuration(totalDuration)}</span>
+                )}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Task selector sidebar */}
-        <div className="w-56 border-r border-gray-800 overflow-y-auto bg-gray-900 flex-shrink-0">
+        <div className="w-64 border-r border-gray-800 overflow-y-auto bg-gray-900 flex-shrink-0">
           <div className="p-3">
-            <h3 className="text-xs text-gray-500 uppercase tracking-wider mb-2">Tasks</h3>
-            {allTasks.map(t => (
-              <button
-                key={t.id}
-                onClick={() => onSelectTask(t.id)}
-                className={`w-full text-left px-3 py-2 rounded-lg mb-1 text-sm transition-colors ${
-                  t.id === selectedTask?.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`}
-              >
-                <div className="font-mono text-xs opacity-70">{t.id}</div>
-                <div className="truncate">{t.title}</div>
-              </button>
-            ))}
+            <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-3 font-bold">ETS Components</h3>
+            <div className="space-y-1">
+              {filteredTasks.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => onSelectTask(t.id)}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition-all group ${
+                    t.id === selectedTask?.id
+                      ? 'bg-blue-600 shadow-lg shadow-blue-900/20'
+                      : 'hover:bg-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      t.status === 'done' ? 'bg-green-500' :
+                      t.status === 'in_progress' ? 'bg-yellow-500' :
+                      t.status === 'interrupted' ? 'bg-red-500' :
+                      'bg-gray-600'
+                    }`} />
+                    <span className={`text-[10px] font-mono ${t.id === selectedTask?.id ? 'text-blue-100' : 'text-gray-500'}`}>
+                      {t.id}
+                    </span>
+                    <span className={`ml-auto text-[9px] uppercase font-bold tracking-tighter ${
+                      t.type === 'objective' ? 'text-purple-400' :
+                      t.type === 'epic' ? 'text-blue-400' :
+                      'text-gray-600'
+                    }`}>
+                      {t.type[0]}
+                    </span>
+                  </div>
+                  <div className={`text-xs truncate ${t.id === selectedTask?.id ? 'text-white font-medium' : 'text-gray-400 group-hover:text-gray-200'}`}>
+                    {t.title}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* ReactFlow canvas */}
         <div className="flex-1 bg-gray-950">
-          {taskOps.length === 0 ? (
+          {!selectedTask ? (
+            <div className="h-full flex items-center justify-center text-gray-600 flex-col gap-2">
+              <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-800 flex items-center justify-center text-xl">?</div>
+              <p className="text-sm">Select a task or objective to view its operation history</p>
+            </div>
+          ) : taskOps.length === 0 ? (
             <div className="h-full flex items-center justify-center text-gray-600">
-              <p>No operations recorded for this task.</p>
+              <p className="text-sm italic">No operations recorded for this item.</p>
             </div>
           ) : (
             <ReactFlow
@@ -255,8 +283,8 @@ export function TaskOperations({ data, selectedTaskId, onSelectTask }: Props) {
               fitView
               attributionPosition="bottom-left"
             >
-              <Background color="#1f2937" />
-              <Controls />
+              <Background color="#111827" gap={20} />
+              <Controls className="bg-gray-800 border-gray-700 fill-white" />
             </ReactFlow>
           )}
         </div>

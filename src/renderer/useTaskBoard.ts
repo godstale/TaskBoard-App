@@ -13,9 +13,10 @@ declare global {
   }
 }
 
-interface AllData {
+export interface AllData {
   project: ProjectInfo | undefined
   epics: EpicWithTasks[]
+  objectives: Task[]
   workflowOrder: Task[]
   workflows: Workflow[]
   operations: Operation[]
@@ -24,12 +25,13 @@ interface AllData {
   checkpoints: Checkpoint[]
 }
 
-export type Screen = 'dashboard' | 'taskops' | 'resources' | 'settings'
+export type Screen = 'workflows' | 'dashboard' | 'taskops' | 'resources' | 'settings'
 
 export function useTaskBoard(dbPath: string | null) {
   const [data, setData] = useState<AllData | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [screen, setScreen] = useState<Screen>('dashboard')
+  const [workflowFilter, setWorkflowFilter] = useState<string>('all')
 
   const reload = useCallback(async (path: string) => {
     const result = await window.taskboard.getAllData(path)
@@ -51,6 +53,8 @@ export function useTaskBoard(dbPath: string | null) {
     setSelectedTaskId,
     screen,
     setScreen,
+    workflowFilter,
+    setWorkflowFilter,
     reload: () => dbPath && reload(dbPath),
   }
 }

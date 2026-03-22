@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import path from 'path'
 import {
-  openDb, closeDb, getProject, getEpicsWithTasks, getWorkflowOrder,
+  openDb, closeDb, getProject, getEpicsWithTasks, getWorkflowOrder, getObjectives,
   getOperations, getResources, getSettings, getWorkflows, getCheckpoints,
   getProjectList, watch
 } from '../core/index.js'
@@ -56,6 +56,7 @@ app.whenReady().then(() => {
     const data = {
       project: getProject(db),
       epics: getEpicsWithTasks(db),
+      objectives: getObjectives(db),
       workflowOrder: getWorkflowOrder(db),
       workflows: getWorkflows(db),
       operations: getOperations(db),

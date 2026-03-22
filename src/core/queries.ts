@@ -50,6 +50,13 @@ export function getWorkflowOrder(db: Db): Task[] {
   return rows.map(parseTask)
 }
 
+export function getObjectives(db: Db): Task[] {
+  const rows = db.prepare(
+    "SELECT * FROM tasks WHERE type = 'objective' ORDER BY created_at ASC"
+  ).all() as any[]
+  return rows.map(parseTask)
+}
+
 export function getOperations(db: Db, taskId?: string): Operation[] {
   if (taskId) {
     return db.prepare(
@@ -61,6 +68,12 @@ export function getOperations(db: Db, taskId?: string): Operation[] {
   ).all() as Operation[]
 }
 
+export function getOperationsByWorkflow(db: Db, workflowId: string): Operation[] {
+  return db.prepare(
+    "SELECT * FROM operations WHERE workflow_id = ? ORDER BY created_at ASC"
+  ).all(workflowId) as Operation[]
+}
+
 export function getResources(db: Db, taskId?: string): Resource[] {
   if (taskId) {
     return db.prepare(
@@ -70,6 +83,12 @@ export function getResources(db: Db, taskId?: string): Resource[] {
   return db.prepare(
     "SELECT * FROM resources ORDER BY created_at ASC"
   ).all() as Resource[]
+}
+
+export function getResourcesByWorkflow(db: Db, workflowId: string): Resource[] {
+  return db.prepare(
+    "SELECT * FROM resources WHERE workflow_id = ? ORDER BY created_at ASC"
+  ).all(workflowId) as Resource[]
 }
 
 export function getSettings(db: Db): Setting[] {
@@ -148,9 +167,13 @@ export function getProjectSummary(db: Db) {
     "SELECT COUNT(*) as count FROM tasks WHERE type = 'epic'"
   ).get() as any).count
 
+  const objectiveCount = (db.prepare(
+    "SELECT COUNT(*) as count FROM tasks WHERE type = 'objective'"
+  ).get() as any).count
+
   const tasksByStatus: Record<string, number> = {}
   taskRows.forEach(r => { tasksByStatus[r.status] = r.count })
   const totalTasks = taskRows.reduce((sum, r) => sum + r.count, 0)
 
-  return { project, totalEpics: epicCount, totalTasks, tasksByStatus }
+  return { project, totalEpics: epicCount, totalObjectives: objectiveCount, totalTasks, tasksByStatus }
 }

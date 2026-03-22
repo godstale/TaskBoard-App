@@ -31,8 +31,10 @@ export interface Workflow {
   id: string
   project_id: string
   title: string
+  description?: string
   source_file?: string
   status: WorkflowStatus
+  report?: string
   created_at: string
 }
 
@@ -55,6 +57,7 @@ export interface Operation {
   started_at?: string
   completed_at?: string
   created_at: string
+  workflow_id?: string
   // schema v2 fields
   tool_name?: string
   skill_name?: string
@@ -71,6 +74,7 @@ export interface Resource {
   file_path: string
   description?: string
   res_type: ResourceType
+  workflow_id?: string
   created_at: string
 }
 
@@ -101,6 +105,7 @@ export interface TaskWithChildren {
 export interface ProjectSummary {
   project: ProjectInfo
   totalEpics: number
+  totalObjectives: number
   totalTasks: number
   tasksByStatus: Record<TaskStatus, number>
 }

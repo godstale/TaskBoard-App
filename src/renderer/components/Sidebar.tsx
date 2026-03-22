@@ -2,8 +2,9 @@ import React from 'react'
 import type { Screen } from '../useTaskBoard'
 
 const SCREENS: { id: Screen; label: string; icon: string }[] = [
+  { id: 'workflows', label: 'Workflows', icon: '🔄' },
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'taskops', label: 'Task Operations', icon: '🔄' },
+  { id: 'taskops', label: 'Task Operations', icon: '⚡' },
   { id: 'resources', label: 'Resources', icon: '📁' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ]
