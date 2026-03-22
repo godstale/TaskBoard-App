@@ -1,9 +1,26 @@
-# TaskBoard App
+# TaskBoard App (Electron)
 
 An Electron desktop app for visualizing [TaskOps](https://github.com/godstale/TaskOps) projects.
-Reads the `taskops.db` SQLite database produced by TaskOps in read-only mode.
+TaskBoard provides a read-only interface to the `taskops.db` SQLite database produced by TaskOps, rendering task hierarchies, operation histories, and project resources.
 
 > Korean README → [README.ko.md](README.ko.md)
+
+---
+
+## Quick Start
+
+After cloning the repository, you can quickly run the app in development mode:
+
+```bash
+pnpm install
+pnpm dev
+```
+
+To build the application for production:
+
+```bash
+pnpm build
+```
 
 ---
 
@@ -15,7 +32,7 @@ Reads the `taskops.db` SQLite database produced by TaskOps in read-only mode.
 
 ---
 
-## Installation
+## Installation & Setup
 
 ```bash
 git clone https://github.com/godstale/TaskBoard-App.git
@@ -44,34 +61,19 @@ pnpm install
 
 ---
 
-## Usage
+## Native App Packaging
 
-**Build:**
-
-```bash
-pnpm build
-```
-
-**Dev mode (Vite dev server + Electron):**
+To package the application into a standalone native installer (e.g., `.exe` for Windows, `.dmg` for macOS):
 
 ```bash
-pnpm dev
-```
-
-> Starts a Vite dev server on port 5173, then launches Electron.
-> Use the OS folder picker dialog to select your TaskOps root folder.
-
-**Production build:**
-
-```bash
-# Build renderer (React) + main process
+# 1. Build renderer (React) + main process
 pnpm build
 
-# Package installer (Windows: .exe NSIS, macOS: .dmg, Linux: .AppImage)
+# 2. Package installer
 pnpm package
 ```
 
-The installer is output to `release/`.
+The installer will be generated in the `dist/` or `release/` directory (configured via `electron-builder.json5`).
 
 ---
 
@@ -90,19 +92,15 @@ MyProject/              ← TaskOps project folder (the folder opened in VS Code
 └── resources/
 ```
 
-TaskBoard expects the **parent directory** of the project folder as its root:
+TaskBoard scans subdirectories of the selected folder and lists all projects that contain `taskops.db`. Point it at a shared parent folder to manage multiple projects at once.
 
 ```
-workspace/              ← select this folder in the folder picker
+workspace/              ← Select this folder in the folder picker
 └── MyProject/
     └── taskops.db
 ```
 
-Select the `workspace/` folder in the folder picker dialog.
-
-TaskBoard scans subdirectories of the selected folder and lists all projects that contain `taskops.db`. Point it at a shared parent folder to manage multiple projects at once.
-
-The DB is monitored with chokidar (+ a 3-second polling fallback) and refreshes automatically when it changes.
+Select the `workspace/` folder in the folder picker dialog. The DB is monitored and refreshes automatically when it changes.
 
 ---
 

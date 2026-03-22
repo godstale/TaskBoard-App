@@ -1,9 +1,26 @@
-# TaskBoard App
+# TaskBoard App (Electron)
 
 [TaskOps](https://github.com/godstale/TaskOps) 프로젝트의 작업 현황을 시각화하는 Electron 데스크탑 앱.
-TaskOps가 생성한 `taskops.db` SQLite 파일을 읽기 전용으로 참조합니다.
+TaskBoard는 TaskOps가 생성한 `taskops.db` SQLite 데이터베이스에 대한 읽기 전용 인터페이스를 제공하여 작업 계층 구조, 작업 이력 및 프로젝트 리소스를 렌더링합니다.
 
 > English README → [README.md](README.md)
+
+---
+
+## 빠른 시작
+
+저장소를 클론한 후 개발 모드에서 앱을 빠르게 실행할 수 있습니다:
+
+```bash
+pnpm install
+pnpm dev
+```
+
+프로덕션용 빌드:
+
+```bash
+pnpm build
+```
 
 ---
 
@@ -15,7 +32,7 @@ TaskOps가 생성한 `taskops.db` SQLite 파일을 읽기 전용으로 참조합
 
 ---
 
-## 설치
+## 설치 및 설정
 
 ```bash
 git clone https://github.com/godstale/TaskBoard-App.git
@@ -44,34 +61,19 @@ pnpm install
 
 ---
 
-## 실행
+## 네이티브 앱 패키징
 
-**빌드:**
-
-```bash
-pnpm build
-```
-
-**개발 모드 (Vite dev server + Electron 동시 실행):**
+애플리케이션을 단독 실행형 네이티브 설치 프로그램(예: Windows용 `.exe`, macOS용 `.dmg`)으로 패키징하려면:
 
 ```bash
-pnpm dev
-```
-
-> Vite 개발 서버(port 5173)를 띄운 뒤 Electron을 실행합니다.
-> 앱 실행 후 OS 네이티브 폴더 선택 다이얼로그로 TaskOps 루트 폴더를 지정합니다.
-
-**프로덕션 빌드 (배포용 바이너리):**
-
-```bash
-# 렌더러(React) + 메인 프로세스 빌드
+# 1. 렌더러(React) + 메인 프로세스 빌드
 pnpm build
 
-# 설치 프로그램 패키징 (Windows: .exe NSIS, macOS: .dmg, Linux: .AppImage)
+# 2. 설치 프로그램 패키징
 pnpm package
 ```
 
-패키징 완료 후 `release/` 폴더에 인스톨러가 생성됩니다.
+설치 프로그램은 `dist/` 또는 `release/` 디렉토리에 생성됩니다(`electron-builder.json5` 설정에 따름).
 
 ---
 
@@ -90,7 +92,7 @@ MyProject/                ← TaskOps 프로젝트 폴더 (VS Code에서 열린 
 └── resources/
 ```
 
-TaskBoard는 이 구조에서 `taskops.db`를 찾기 위해 **프로젝트 폴더의 부모 디렉토리**를 루트로 받습니다.
+TaskBoard는 지정된 폴더의 하위 디렉토리를 스캔하여 `taskops.db`가 있는 모든 프로젝트를 나열합니다. 여러 프로젝트를 동시에 관리하려면 공통 상위 폴더를 지정하세요.
 
 ```
 workspace/                ← 폴더 선택 다이얼로그에서 이 폴더를 선택
@@ -98,12 +100,7 @@ workspace/                ← 폴더 선택 다이얼로그에서 이 폴더를 
     └── taskops.db
 ```
 
-폴더 선택 다이얼로그에서 `workspace/` 폴더를 선택합니다.
-
-TaskBoard는 지정된 폴더의 하위 디렉토리를 스캔하여 `taskops.db`가 있는 프로젝트를 모두 목록에 표시합니다.
-여러 프로젝트를 동시에 관리하는 경우 공통 상위 폴더를 지정하면 됩니다.
-
-DB 파일이 변경되면 chokidar(파일 감시) + 3초 폴링 fallback으로 자동 갱신됩니다.
+폴더 선택 다이얼로그에서 `workspace/` 폴더를 선택합니다. DB 파일이 변경되면 자동으로 감지하여 화면을 갱신합니다.
 
 ---
 
