@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import type { Resource, Workflow } from '@taskboard/core'
 
 const TYPE_STYLES: Record<string, { bg: string; text: string; label: string; border: string }> = {
@@ -15,6 +15,9 @@ interface Props {
 }
 
 export function Resources({ resources, workflows, workflowFilter }: Props) {
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, path: string } | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
   const filteredResources = useMemo(() => {
     if (workflowFilter === 'all') return resources
     return resources.filter(r => r.workflow_id === workflowFilter)
@@ -38,8 +41,28 @@ export function Resources({ resources, workflows, workflowFilter }: Props) {
     })
   }, [groupedResources])
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setContextMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleContextMenu = (e: React.MouseEvent, path: string) => {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY, path })
+  }
+
+  const handleOpenFolder = (path: string) => {
+    window.taskboard.openInFolder(path)
+    setContextMenu(null)
+  }
+
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto relative">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <span className="w-2 h-6 bg-green-500 rounded-sm" />
@@ -82,7 +105,9 @@ export function Resources({ resources, workflows, workflowFilter }: Props) {
                     return (
                       <div
                         key={r.id}
-                        className={`${style.bg} ${style.border} border rounded-xl p-4 transition-all hover:bg-opacity-30 group`}
+                        onContextMenu={(e) => handleContextMenu(e, r.file_path)}
+                        onClick={(e) => handleContextMenu(e, r.file_path)}
+                        className={`${style.bg} ${style.border} border rounded-xl p-4 transition-all hover:bg-opacity-30 group cursor-pointer`}
                       >
                         <div className="flex items-start gap-4">
                           <div className="flex flex-col gap-2 items-center flex-shrink-0 pt-0.5">
@@ -126,6 +151,22 @@ export function Resources({ resources, workflows, workflowFilter }: Props) {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div 
+          ref={menuRef}
+          className="fixed bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 py-1 min-w-[150px]"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <button 
+            onClick={() => handleOpenFolder(contextMenu.path)}
+            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-2"
+          >
+            <span>📂</span> 해당 위치 열기
+          </button>
         </div>
       )}
     </div>

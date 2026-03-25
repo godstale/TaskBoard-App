@@ -3,6 +3,7 @@ import type { Workflow } from '@taskboard/core'
 
 interface Props {
   workflows: Workflow[]
+  onSelectWorkflow: (id: string) => void
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -11,7 +12,7 @@ const STATUS_STYLE: Record<string, string> = {
   archived: 'bg-gray-800 text-gray-500 border-gray-700',
 }
 
-export function Workflows({ workflows }: Props) {
+export function Workflows({ workflows, onSelectWorkflow }: Props) {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-8">
@@ -34,7 +35,8 @@ export function Workflows({ workflows }: Props) {
           {workflows.map(wf => (
             <div 
               key={wf.id}
-              className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-blue-500/50 transition-all group"
+              onClick={() => onSelectWorkflow(wf.id)}
+              className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-blue-500/50 transition-all group cursor-pointer"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">

@@ -7,6 +7,7 @@ import { TaskOperations } from './screens/TaskOperations'
 import { Resources } from './screens/Resources'
 import { Settings } from './screens/Settings'
 import { Workflows } from './screens/Workflows'
+import { Monitoring } from './screens/Monitoring'
 
 export function App() {
   const [dbPath, setDbPath] = useState<string | null>(null)
@@ -17,7 +18,8 @@ export function App() {
     screen, 
     setScreen,
     workflowFilter,
-    setWorkflowFilter
+    setWorkflowFilter,
+    logs
   } = useTaskBoard(dbPath)
 
   if (!dbPath || !data) {
@@ -43,6 +45,7 @@ export function App() {
               {screen === 'workflows' && 'Workflows'}
               {screen === 'dashboard' && 'Dashboard'}
               {screen === 'taskops' && 'Task Operations'}
+              {screen === 'monitoring' && 'Monitoring'}
               {screen === 'resources' && 'Resources'}
               {screen === 'settings' && 'Settings'}
             </h2>
@@ -64,14 +67,38 @@ export function App() {
         </header>
 
         <div className="flex-1 overflow-auto">
-          {screen === 'workflows' && <Workflows workflows={data.workflows} />}
-          {screen === 'dashboard' && <Dashboard data={data} workflowFilter={workflowFilter} />}
+          {screen === 'workflows' && (
+            <Workflows 
+              workflows={data.workflows} 
+              onSelectWorkflow={(id) => {
+                setWorkflowFilter(id)
+                setScreen('dashboard')
+              }}
+            />
+          )}
+          {screen === 'dashboard' && (
+            <Dashboard 
+              data={data} 
+              workflowFilter={workflowFilter} 
+              onSelectTask={(id) => {
+                setSelectedTaskId(id)
+                setScreen('taskops')
+              }}
+            />
+          )}
           {screen === 'taskops' && (
             <TaskOperations
               data={data}
               selectedTaskId={selectedTaskId}
               onSelectTask={setSelectedTaskId}
               workflowFilter={workflowFilter}
+            />
+          )}
+          {screen === 'monitoring' && (
+            <Monitoring 
+              data={data} 
+              workflowFilter={workflowFilter} 
+              logs={logs}
             />
           )}
           {screen === 'resources' && (
