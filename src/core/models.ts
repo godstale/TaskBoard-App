@@ -4,6 +4,58 @@ export type TaskStatus = 'todo' | 'in_progress' | 'interrupted' | 'done' | 'canc
 export type TaskType = 'project' | 'epic' | 'task' | 'objective'
 export type OperationType = 'start' | 'progress' | 'complete' | 'error' | 'interrupt'
 export type ResourceType = 'input' | 'output' | 'reference' | 'intermediate'
+export type AgentEventType = 'tool_use' | 'tool_result' | 'thinking' | 'subagent_start' | 'subagent_end'
+
+export interface AgentEvent {
+  id: number
+  session_id?: string
+  workflow_id?: string
+  task_id?: string
+  event_type: AgentEventType
+  tool_name?: string
+  skill_name?: string
+  input_tokens?: number
+  output_tokens?: number
+  thinking_tokens?: number
+  duration_ms?: number
+  event_timestamp?: string
+  source?: string
+  created_at: string
+}
+
+export interface ClaudeEvent {
+  type: string
+  id?: string
+  name?: string
+  input?: any
+  content?: any
+  tool_use_id?: string
+  thinking?: string
+  thinking_tokens?: number
+  timestamp: string
+  duration_ms?: number // 산출된 값
+}
+
+export interface GeminiSession {
+  sessionId: string
+  createdAt: string
+  messages: Array<{
+    role: string
+    parts: Array<{
+      text?: string
+      functionCall?: {
+        name: string
+        args: any
+      }
+    }>
+    usageMetadata?: {
+      promptTokenCount: number
+      candidatesTokenCount: number
+      totalTokenCount: number
+    }
+    timestamp: string
+  }>
+}
 
 export interface Task {
   id: string

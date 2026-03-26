@@ -5,6 +5,7 @@ import { AllData } from '../useTaskBoard'
 interface Props {
   data: AllData
   workflowFilter: string
+  onSelectTask: (id: string) => void
 }
 
 const STATUS_COLOR: Record<TaskStatus, string> = {
@@ -58,7 +59,7 @@ function TaskDetails({ task }: { task: Task }) {
   )
 }
 
-export function Dashboard({ data, workflowFilter }: Props) {
+export function Dashboard({ data, workflowFilter, onSelectTask }: Props) {
   const { project, epics: allEpics, objectives: allObjectives } = data
 
   const filteredEpics = useMemo(() => {
@@ -102,7 +103,11 @@ export function Dashboard({ data, workflowFilter }: Props) {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredObjectives.map(obj => (
-              <div key={obj.id} className="bg-gray-900 border border-purple-900/30 rounded-xl p-4">
+              <div 
+                key={obj.id} 
+                onClick={() => onSelectTask(obj.id)}
+                className="bg-gray-900 border border-purple-900/30 rounded-xl p-4 cursor-pointer hover:border-purple-500 transition-all"
+              >
                 <div className="flex items-start justify-between mb-2">
                   <span className="text-xs text-purple-400 font-mono">{obj.id}</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full ${STATUS_COLOR[obj.status]} text-white uppercase`}>
@@ -139,7 +144,10 @@ export function Dashboard({ data, workflowFilter }: Props) {
             const epicDone = tasks.filter(t => t.task.status === 'done').length
             return (
               <div key={epic.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-                <div className="flex items-start justify-between mb-3">
+                <div 
+                  className="flex items-start justify-between mb-3 cursor-pointer hover:bg-gray-800/50 p-1 rounded-lg transition-all"
+                  onClick={() => onSelectTask(epic.id)}
+                >
                   <div>
                     <span className="text-xs text-gray-500 font-mono">{epic.id}</span>
                     <h3 className="text-white font-semibold">{epic.title}</h3>
@@ -154,7 +162,10 @@ export function Dashboard({ data, workflowFilter }: Props) {
                 <div className="mt-3 space-y-2">
                   {tasks.map(({ task, children }) => (
                     <div key={task.id} className="group">
-                      <div className="flex items-center gap-2 py-1">
+                      <div 
+                        className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-800/50 px-2 rounded transition-all"
+                        onClick={() => onSelectTask(task.id)}
+                      >
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_COLOR[task.status]}`} />
                         <span className="text-xs text-gray-500 font-mono w-20 flex-shrink-0">{task.id}</span>
                         <span className="text-sm text-gray-200 flex-1">{task.title}</span>
@@ -163,7 +174,10 @@ export function Dashboard({ data, workflowFilter }: Props) {
                       <TaskDetails task={task} />
                       {children.map(child => (
                         <div key={child.id}>
-                          <div className="flex items-center gap-2 py-1 pl-6">
+                          <div 
+                            className="flex items-center gap-2 py-1 pl-6 cursor-pointer hover:bg-gray-800/50 px-2 rounded transition-all"
+                            onClick={() => onSelectTask(child.id)}
+                          >
                             <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_COLOR[child.status]}`} />
                             <span className="text-xs text-gray-500 font-mono w-20 flex-shrink-0">{child.id}</span>
                             <span className="text-sm text-gray-400 flex-1">{child.title}</span>

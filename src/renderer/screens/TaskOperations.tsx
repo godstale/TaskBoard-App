@@ -6,6 +6,8 @@ import ReactFlow, {
   Controls,
   MarkerType,
   NodeTypes,
+  Handle,
+  Position,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import type { Task, Operation, Workflow } from '@taskboard/core'
@@ -48,6 +50,7 @@ interface OpNodeData {
   inputTokens?: number
   outputTokens?: number
   durationSeconds?: number
+  elapsedText?: string
 }
 
 function OperationNode({ data }: { data: OpNodeData }) {
@@ -57,9 +60,14 @@ function OperationNode({ data }: { data: OpNodeData }) {
 
   return (
     <div
-      className="bg-gray-800 border rounded-lg px-4 py-2 min-w-56"
+      className="bg-gray-800 border rounded-lg px-4 py-2 min-w-56 relative"
       style={{ borderColor: data.color }}
     >
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="w-2 h-2 !bg-gray-600 border-none"
+      />
       <div className="flex items-center gap-2 mb-1">
         <span
           className="w-2 h-2 rounded-full flex-shrink-0"
@@ -67,6 +75,11 @@ function OperationNode({ data }: { data: OpNodeData }) {
         />
         <span className="text-xs font-medium text-white uppercase tracking-wide">
           {data.operationType}
+          {data.elapsedText && (
+            <span className="ml-2 text-[10px] text-gray-400 normal-case font-normal">
+              ({data.elapsedText})
+            </span>
+          )}
         </span>
         <span className="text-xs text-gray-500 ml-auto">{data.time}</span>
       </div>
@@ -114,6 +127,11 @@ function OperationNode({ data }: { data: OpNodeData }) {
           </div>
         </div>
       )}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="w-2 h-2 !bg-gray-600 border-none"
+      />
     </div>
   )
 }
@@ -152,25 +170,41 @@ export function TaskOperations({ data, selectedTaskId, onSelectTask, workflowFil
   const hasTokenData = taskOps.some(op => op.input_tokens != null || op.output_tokens != null)
 
   const { nodes, edges } = useMemo(() => {
-    const nodes: Node[] = taskOps.map((op, i) => ({
-      id: String(op.id),
-      type: 'operation',
-      position: { x: 100, y: i * 140 },
-      data: {
-        operationType: op.operation_type,
-        color: OP_COLOR[op.operation_type] ?? '#6b7280',
-        time: op.created_at?.slice(11, 16) ?? '',
-        agent: op.agent_platform,
-        summary: op.summary,
-        toolName: op.tool_name,
-        skillName: op.skill_name,
-        mcpName: op.mcp_name,
-        retryCount: op.retry_count,
-        inputTokens: op.input_tokens,
-        outputTokens: op.output_tokens,
-        durationSeconds: op.duration_seconds,
-      } satisfies OpNodeData,
-    }))
+    const nodes: Node[] = taskOps.map((op, i) => {
+      let elapsedText = ''
+      const currentAt = op.created_at ? new Date(op.created_at).getTime() : 0
+
+      if (op.operation_type === 'progress' && i > 0 && op.created_at && taskOps[i - 1].created_at) {
+        const prevAt = new Date(taskOps[i - 1].created_at!).getTime()
+        const diff = Math.round((currentAt - prevAt) / 1000)
+        elapsedText = `+${formatDuration(diff)}`
+      } else if (op.operation_type === 'complete' && i > 0 && op.created_at && taskOps[0].created_at) {
+        const startAt = new Date(taskOps[0].created_at!).getTime()
+        const diff = Math.round((currentAt - startAt) / 1000)
+        elapsedText = `Total: ${formatDuration(diff)}`
+      }
+
+      return {
+        id: String(op.id),
+        type: 'operation',
+        position: { x: 100, y: i * 140 },
+        data: {
+          operationType: op.operation_type,
+          color: OP_COLOR[op.operation_type] ?? '#6b7280',
+          time: op.created_at?.slice(11, 19) ?? '',
+          agent: op.agent_platform,
+          summary: op.summary,
+          toolName: op.tool_name,
+          skillName: op.skill_name,
+          mcpName: op.mcp_name,
+          retryCount: op.retry_count,
+          inputTokens: op.input_tokens,
+          outputTokens: op.output_tokens,
+          durationSeconds: op.duration_seconds,
+          elapsedText,
+        } satisfies OpNodeData,
+      }
+    })
 
     const edges: Edge[] = taskOps.slice(0, -1).map((op, i) => ({
       id: `e${op.id}-${taskOps[i + 1].id}`,
@@ -280,7 +314,9 @@ export function TaskOperations({ data, selectedTaskId, onSelectTask, workflowFil
               nodes={nodes}
               edges={edges}
               nodeTypes={nodeTypes}
-              fitView
+              defaultViewport={{ x: 0, y: 0, zoom: 1.0 }}
+              minZoom={0.1}
+              maxZoom={2.0}
               attributionPosition="bottom-left"
             >
               <Background color="#111827" gap={20} />

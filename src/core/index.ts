@@ -1,4 +1,5 @@
-export * from './models'
 export * from './db'
+export * from './models'
 export * from './queries'
 export * from './watcher'
+export * from './logs'

@@ -1,7 +1,7 @@
 import type { Db } from './db'
 import type {
   Task, Operation, Resource, Setting, Workflow, Checkpoint,
-  ProjectInfo, EpicWithTasks, TaskWithChildren
+  ProjectInfo, EpicWithTasks, TaskWithChildren, AgentEvent
 } from './models'
 import fs from 'fs'
 import path from 'path'
@@ -93,6 +93,35 @@ export function getResourcesByWorkflow(db: Db, workflowId: string): Resource[] {
 
 export function getSettings(db: Db): Setting[] {
   return db.prepare("SELECT * FROM settings ORDER BY key ASC").all() as Setting[]
+}
+
+export function getSchemaVersion(db: Db): number {
+  try {
+    const row = db.prepare(
+      "SELECT value FROM settings WHERE workflow_id='' AND key='__schema_version'"
+    ).get() as any
+    return parseInt(row?.value ?? '0')
+  } catch {
+    return 0
+  }
+}
+
+export function getAgentEvents(db: Db, workflowId?: string): AgentEvent[] {
+  try {
+    if (workflowId) {
+      const stmt = db.prepare(
+        "SELECT * FROM agent_events WHERE workflow_id = ? ORDER BY created_at ASC"
+      )
+      return stmt.all(workflowId) as AgentEvent[]
+    }
+    const stmt = db.prepare(
+      "SELECT * FROM agent_events ORDER BY created_at ASC"
+    )
+    return stmt.all() as AgentEvent[]
+  } catch {
+    // agent_events 테이블이 없는 경우 (v7 미만)
+    return []
+  }
 }
 
 export function getWorkflows(db: Db): Workflow[] {
