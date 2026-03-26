@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import type { Operation, AgentEvent, ClaudeEvent, GeminiSession, Workflow } from '@taskboard/core'
 import { AllData } from '../useTaskBoard'
+import { FlowFeed } from '../components/FlowFeed'
 
 interface Props {
   data: AllData
@@ -24,14 +25,6 @@ export function Monitoring({ data, workflowFilter, logs }: Props) {
     }
     return ops.slice(0, 50)
   }, [data.operations, workflowFilter])
-
-  const filteredAgentEvents = useMemo(() => {
-    let events = [...data.agentEvents].sort((a, b) => b.id - a.id)
-    if (workflowFilter !== 'all') {
-      events = events.filter(e => e.workflow_id === workflowFilter)
-    }
-    return events.slice(0, 50)
-  }, [data.agentEvents, workflowFilter])
 
   useEffect(() => {
     if (activeTab === 'claude' && selectedClaudeLog) {
@@ -95,77 +88,21 @@ export function Monitoring({ data, workflowFilter, logs }: Props) {
         ))}
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-4 flex flex-col">
         {activeTab === 'feed' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <section>
-              <h3 className="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2">
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                Latest Operations
+                Live Flow History
               </h3>
-              <div className="space-y-3">
-                {filteredOps.map(op => (
-                  <div key={op.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                        op.operation_type === 'error' ? 'bg-red-900 text-red-300' :
-                        op.operation_type === 'complete' ? 'bg-green-900 text-green-300' :
-                        'bg-blue-900 text-blue-300'
-                      }`}>
-                        {op.operation_type}
-                      </span>
-                      <span className="text-[10px] text-gray-500 font-mono">{op.task_id}</span>
-                      <span className="text-[10px] text-gray-600 ml-auto">{op.created_at}</span>
-                    </div>
-                    <div className="text-sm text-gray-200">{op.summary}</div>
-                    {op.tool_name && (
-                      <div className="mt-2 text-[10px] text-gray-500 flex gap-2">
-                        <span className="bg-gray-800 px-1.5 py-0.5 rounded">Tool: {op.tool_name}</span>
-                        {op.duration_seconds && <span>{op.duration_seconds}s</span>}
-                      </div>
-                    )}
-                  </div>
-                ))}
+              <div className="text-[10px] text-gray-500 bg-gray-900 px-2 py-1 rounded border border-gray-800">
+                Showing {filteredOps.length} latest operations
               </div>
-            </section>
-
-            <section>
-              <h3 className="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                Agent Events (v7+)
-              </h3>
-              {data.schemaVersion < 7 ? (
-                <div className="bg-gray-900/50 border border-gray-800 border-dashed rounded-lg p-8 text-center text-gray-500 text-sm">
-                  Agent Events require TaskOps Schema v7 or higher.<br/>
-                  Current version: v{data.schemaVersion}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredAgentEvents.map(event => (
-                    <div key={event.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] bg-purple-900 text-purple-300 px-1.5 py-0.5 rounded font-bold uppercase">
-                          {event.event_type}
-                        </span>
-                        {event.tool_name && (
-                          <span className="text-[10px] bg-cyan-900 text-cyan-300 px-1.5 py-0.5 rounded font-bold">
-                            {event.tool_name}
-                          </span>
-                        )}
-                        <span className="text-[10px] text-gray-600 ml-auto">{event.created_at}</span>
-                      </div>
-                      {event.event_type === 'thinking' ? (
-                        <div className="text-xs text-gray-500 italic truncate">Thinking... ({event.thinking_tokens} tokens)</div>
-                      ) : (
-                        <div className="text-xs text-gray-400">
-                          {event.task_id} • {event.duration_ms}ms
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
+            </div>
+            <div className="flex-1 min-h-[500px]">
+              <FlowFeed operations={filteredOps} tasks={data.workflowOrder} />
+            </div>
           </div>
         )}
 
