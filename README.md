@@ -109,6 +109,7 @@ Select the `workspace/` folder in the folder picker dialog. The DB is monitored 
 | Screen | Description |
 |--------|-------------|
 | **Dashboard** | Summary cards + Epic/Task hierarchy |
+| **Monitoring** | Real-time Flow Chart and live agent execution logs |
 | **Task Operations** | ReactFlow node-edge diagram of operation history |
 | **Resources** | Resource list with type badges |
 | **Settings** | Key/value settings table |
