@@ -109,6 +109,7 @@ workspace/                ← 폴더 선택 다이얼로그에서 이 폴더를 
 | 화면 | 설명 |
 |------|------|
 | **Dashboard** | 요약 카드 + Epic/Task 계층 구조 |
+| **Monitoring** | 실시간 플로우 차트 및 에이전트 실행 로그 |
 | **Task Operations** | ReactFlow 노드-엣지 다이어그램 |
 | **Resources** | 리소스 목록 + 타입 배지 |
 | **Settings** | Key/Value 설정 테이블 |

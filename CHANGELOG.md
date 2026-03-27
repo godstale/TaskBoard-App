@@ -11,6 +11,24 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.7] - 2026-03-27
+
+### Added
+
+- **Monitoring Screen**: Real-time visualization of agent thinking, execution flows, and live task transitions.
+- **Live Flow Chart**: New `FlowFeed` component to track live task transitions and events in real-time.
+- **TaskOps Schema v6 Support**: Full compatibility with TaskOps v0.2.6+ databases, including `AgentEvents`, `Workflows`, and `Checkpoints`.
+- **Advanced Task Properties**: Visualization of task dependencies (`depends_on`), parallel groups, and sequential ordering (`seq_order`).
+- **Detailed Agent Events**: Support for tracking tool use, skills, thinking tokens, and duration for Claude and Gemini sessions.
+- **Monitoring Guide**: Added comprehensive documentation for the new monitoring features in `docs/monitoring-guide.md`.
+
+### Changed
+
+- **Task Operations**: Enhanced diagram view with more detailed metadata and improved layout.
+- **Dashboard**: Updated to show advanced task properties and better status visualization.
+
+---
+
 ## [0.2.6] - 2026-03-22
 
 ### Changed
